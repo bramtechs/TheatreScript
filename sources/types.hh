@@ -40,6 +40,18 @@ public:
         }
     }
     
+    template<typename T>
+    T Extract() const {
+        if (!std::holds_alternative<T>(*this)) {
+            throw OperationError(std::format("Expected type {}, but got {}", typeid(T).name(), ToString()));
+        }
+        return std::get<T>(*this);
+    }
+    
+    bool IsUndefined() const {
+        return std::holds_alternative<std::monostate>(*this);
+    }
+    
     std::string ToString() const {
         std::string result;
         std::visit([&](const auto& value) { result = ToString(value); }, *this);
@@ -52,17 +64,42 @@ public:
     }
 
     Any operator +(const Any& any) const {
-        throw OperationError("Not implemented");
+        // string concatenation
+        if (std::holds_alternative<std::string>(*this) && std::holds_alternative<std::string>(any)) {
+            return Any ( std::get<std::string>(*this) + std::get<std::string>(any) );
+        } else if (std::holds_alternative<std::monostate>(*this) && std::holds_alternative<std::string>(any)) {
+            return Any ( std::get<std::string>(any) );
+        } else {
+            // If either is float, type gets promoted
+            if (std::holds_alternative<float>(any) || std::holds_alternative<float>(*this)) {
+                return Any ( this->Value<float>() + any.Value<float>() );
+            } else {
+                return Any ( this->Value<int>() + any.Value<int>() );
+            }
+        }
     }
 
+    // TODO: @cleanup inline
+    template <typename T>
+    T Value() const {
+        if (std::holds_alternative<float>(*this)) {
+            return (T)std::get<float>(*this);
+        } else if (std::holds_alternative<int>(*this)) {
+            return (T)std::get<int>(*this);
+        } else if (std::holds_alternative<std::monostate>(*this)) {
+            return (T)0.f;
+        } else {
+            throw OperationError(std::format("Any {} does not contain valuable", ToString()));
+        }
+    }
     
 private:
     static std::string ToString(const std::string& s) {
-        return s;
+        return std::format("'{}'", s);
     }
 
     static std::string ToString(const std::monostate&) {
-        return "(none)";
+        return "(undefined)";
     }
     
     static std::string ToString(int value) {

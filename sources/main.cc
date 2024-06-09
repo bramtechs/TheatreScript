@@ -9,6 +9,11 @@
 #include <format>
 #include <optional>
 #include <deque>
+#include <unordered_map>
+#include <span>
+#include <cstdio>
+#include <algorithm>
+#include <iterator>
 
 #include "raylib.h"
 #include "types.hh"
@@ -38,6 +43,103 @@ public:
     }
 };
 
+using HookParams = std::span<Any>;
+using HookFunc = std::function<Any(const HookParams&)>;
+struct Hook {
+    int argc; // -1 for infinite
+    HookFunc func;
+    std::string name;
+    
+    Any Call(const HookParams& params) const {
+        if (argc != -1 && params.size() != argc) {
+            throw VmError(std::format("Function {} expects {} args but {} were given.",
+                                      name, argc, params.size()));
+        }
+        return func(params);
+    }
+};
+
+class Externals
+{
+public:
+    std::unordered_map<std::string, Hook> hooks;
+    
+    Externals() {
+        // add standard library
+        Register("print", Print, -1);
+        Register("println", PrintLn, -1);
+        Register("throw", Throw, -1);
+    }
+    
+    void Register(const std::string& name, HookFunc func, int paramCount = -1) {
+        hooks[name] = Hook{ paramCount, func };
+    }
+    
+    Hook GetHook(const std::string& name) const {
+        try {
+            return hooks.at(name);
+        } catch (std::range_error& ex) {
+            throw("No external hook found with name: {}", name);
+        }
+    }
+    
+private:
+    static Any Throw(const HookParams& args) {
+        try {
+            Any base;
+            for (const Any& a: args) {
+                base = base + a;
+            }
+            throw VmError(base.ToString());
+        } catch (OperationError& ex) {
+            std::stringstream ss;
+            ss << "Error: ";
+            for (const Any& a: args) {
+                ss << a << " ";
+            }
+            throw VmError(ss.str());
+        }
+    }
+    
+    static void _BasePrint(const HookParams& args) {
+        if (args.size() == 1) {
+            std::cout << args[0];
+        } else {
+            std::string formatted = FormatWithVector(args[0].ToString(),
+                                                     std::span(args.begin() + 1, args.end()));
+            std::cout << formatted;
+        }
+    }
+    
+    static Any Print(const HookParams& args) {
+        _BasePrint(args);
+        return {};
+    }
+    
+    static Any PrintLn(const HookParams& args) {
+        _BasePrint(args);
+        std::cout << "\n";
+        return {};
+    }
+    
+    static std::string FormatWithVector(const std::string& format,
+                                        const std::span<Any>& args) {
+        std::stringstream ss;
+        size_t argIndex = 0;
+
+        for (char ch : format) {
+            if (ch == '{' && argIndex < args.size()) {
+                const Any& arg = args[argIndex++];
+                ss << arg;
+            } else if (ch != '}') {
+                ss << ch;
+            }
+        }
+        return ss.str();
+    }
+};
+
+// TODO: make all methods static
 class VirtualMachine
 {
 public:
@@ -56,12 +158,28 @@ public:
             }
             case Opcode::ADD: {
                 Any base;
-                while (m.IsStackEmpty()) {
-                    Any* value;
-                    m = PopStack(value);
+                while (!m.IsStackEmpty()) {
+                    Any value;
+                    m = m.PopStack(&value);
                     base = base + value;
                 }
                 m = m.PushStack(base);
+                break;
+            }
+            case Opcode::CALL: {
+                const std::string& func = cmd.value.Extract<std::string>();
+                Hook hook = externals.GetHook(func);
+                // eat rest stack
+                std::vector<Any> args; args.reserve(8);
+                while (!m.IsStackEmpty()) {
+                    Any arg;
+                    m = m.PopStack(&arg);
+                    args.emplace_back(arg);
+                }
+                Any result = hook.Call(args);
+                if (!result.IsUndefined()) {
+                    m = m.PushStack(result);
+                }
                 break;
             }
             default: {
@@ -80,7 +198,7 @@ public:
     
     [[nodiscard]] VirtualMachine PopStack(Any* outValue) const {
         if (IsStackEmpty()) {
-            throw VmError("Stack is empty");
+            throw VmError("Stack underflow");
         }
         VirtualMachine m = *this;
         Any value = m.stack.back();
@@ -115,6 +233,7 @@ private:
     std::string name;
     std::deque<Command> history{};
     std::vector<Any> stack{};
+    Externals externals{};
 };
 
 constexpr bool StringsEqualInsensitive(const std::string_view& str1,
@@ -158,8 +277,8 @@ std::optional<Command> ParseLine(const std::string_view& line)
     for (const auto& [code, codeStr] : magic_enum::enum_entries<Opcode>())
     {
         if (StringsEqualInsensitive(first, codeStr))
-        {
-            return Command{ code, second };
+        {            
+            return Command{ code, Any::Parse(std::string(second)) };
         }
     }
     throw ParseError(std::format("No opcode with value: {}", first));
@@ -169,7 +288,7 @@ constexpr const char* script = R"(
     PUSH 5
     PUSH 7
     ADD
-    CALL print
+    CALL println
 )";
 
 void RunScript(const std::string_view& script)
