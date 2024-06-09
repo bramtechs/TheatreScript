@@ -219,12 +219,20 @@ public:
             os << " - " << vm.name;
         }
         os << "\nStack:" << '\n';
-        for (const Any& val: vm.stack) {
-            os << "- " << val << '\n';
+        if (vm.stack.empty()) {
+            os << "(empty)" << '\n';
+        } else {
+            for (const Any& val: vm.stack) {
+                os << "- " << val << '\n';
+            }
         }
         os << "\nHistory:" << '\n';
-        for (const Command& cmd: vm.history) {
-            os << "- " << cmd << '\n';
+        if (vm.history.empty()) {
+            os << "(empty)" << '\n';
+        } else {
+            for (const Command& cmd: vm.history) {
+                os << "- " << cmd << '\n';
+            }
         }
         return os;
     }
