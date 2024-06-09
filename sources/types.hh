@@ -4,47 +4,76 @@
 #include <iostream>
 #include <string>
 #include <variant>
+#include <stdexcept>
 
-class Any : public std::variant<std::monostate, int, float, bool, std::string>
+using OperationError = std::runtime_error;
+
+using AnyVariant = std::variant<std::monostate, int, float, bool, std::string>;
+class Any : public AnyVariant
 {
 public:
-    constexpr Any(const std::string_view& text) {
+    constexpr Any() = default;
+    constexpr Any(std::monostate) : AnyVariant(std::monostate{}) {}
+    constexpr Any(int value) : AnyVariant(value) {}
+    constexpr Any(float value) : AnyVariant(value) {}
+    constexpr Any(bool value) : AnyVariant(value) {}
+    constexpr Any(const std::string& value) : AnyVariant(value) {}
+    constexpr Any(const std::string_view& value) : Any(std::string(value)) {}
+
+    template<std::size_t N>
+    constexpr Any(const char (&value)[N]) : Any(std::string(value)) {}
+    
+    // Additional constructors for convenience
+    Any(const char* value) : Any(std::string(value)) {}
+
+    static Any Parse(const std::string& text) {
         if (text.empty()) {
-            this->template emplace<0>();
+            return Any();
         } else if (text.find_first_not_of("0123456789") == std::string_view::npos) {
-            this->template emplace<1>(std::stoi(std::string(text)));
+            return Any(std::stoi(text));
         } else if (text.find('.') != std::string_view::npos) {
-            this->template emplace<2>(std::stof(std::string(text)));
+            return Any(std::stof(text));
         } else if (text == "true" || text == "false") {
-            this->template emplace<3>(text == "true");
+            return Any(text == "true");
         } else {
-            this->template emplace<4>(std::string(text));
+            return Any(text);
         }
     }
     
+    std::string ToString() const {
+        std::string result;
+        std::visit([&](const auto& value) { result = ToString(value); }, *this);
+        return result;
+    }
+    
     friend std::ostream& operator<<(std::ostream& os, const Any& any) {
-        std::visit([&os](const auto& value) { os << to_string(value); }, any);
+        std::visit([&os](const auto& value) { os << ToString(value); }, any);
         return os;
     }
 
+    Any operator +(const Any& any) const {
+        throw OperationError("Not implemented");
+    }
+
+    
 private:
-    static std::string to_string(const std::string& s) {
+    static std::string ToString(const std::string& s) {
         return s;
     }
 
-    static std::string to_string(const std::monostate&) {
+    static std::string ToString(const std::monostate&) {
         return "(none)";
     }
     
-    static std::string to_string(int value) {
+    static std::string ToString(int value) {
         return std::to_string(value);
     }
 
-    static std::string to_string(float value) {
+    static std::string ToString(float value) {
         return std::to_string(value);
     }
 
-    static std::string to_string(bool value) {
+    static std::string ToString(bool value) {
         return value ? "true" : "false";
     }
 };

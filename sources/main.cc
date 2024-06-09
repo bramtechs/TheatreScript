@@ -8,12 +8,16 @@
 #include <stdexcept>
 #include <format>
 #include <optional>
+#include <deque>
 
 #include "raylib.h"
 #include "types.hh"
 #include "magic_enum.hpp"
 
-using ScriptError = std::runtime_error;
+// Virtual machine and its types' methods should be pure.
+
+using ParseError = std::runtime_error;
+using VmError = std::runtime_error;
 
 enum class Opcode : int
 {
@@ -37,11 +41,80 @@ public:
 class VirtualMachine
 {
 public:
-    void Execute(const Command& cmd) {
-        std::cout << "executed " << cmd << "\n";
+    VirtualMachine(const std::string& name = "")
+        : name(name)
+    {
     }
+    
+    [[nodiscard]] VirtualMachine Execute(const Command& cmd) const {
+        VirtualMachine m = *this;
+        
+        switch (cmd.code) {
+            case Opcode::PUSH: {
+                m = m.PushStack(cmd.value);
+                break;
+            }
+            case Opcode::ADD: {
+                Any base;
+                while (m.IsStackEmpty()) {
+                    Any* value;
+                    m = PopStack(value);
+                    base = base + value;
+                }
+                m = m.PushStack(base);
+                break;
+            }
+            default: {
+                throw VmError(std::format("Opcode {} not implemented.",
+                                          magic_enum::enum_name<Opcode>(cmd.code)));
+            }
+        }
+        
+        m.history.emplace_front(cmd);
+        return m;
+    }
+    
+    bool IsStackEmpty() const {
+        return stack.empty();
+    }
+    
+    [[nodiscard]] VirtualMachine PopStack(Any* outValue) const {
+        if (IsStackEmpty()) {
+            throw VmError("Stack is empty");
+        }
+        VirtualMachine m = *this;
+        Any value = m.stack.back();
+        m.stack.pop_back();
+        *outValue = value;
+        return m;
+    }
+    
+    [[nodiscard]] VirtualMachine PushStack(const Any& value) const {
+        VirtualMachine m = *this;
+        m.stack.emplace_back(value);
+        return m;
+    }
+    
+    friend std::ostream& operator<<(std::ostream& os, const VirtualMachine& vm) {
+        os << "Virtual machine";
+        if (!vm.name.empty()) {
+            os << " - " << vm.name;
+        }
+        os << "\nStack:" << '\n';
+        for (const Any& val: vm.stack) {
+            os << "- " << val << '\n';
+        }
+        os << "\nHistory:" << '\n';
+        for (const Command& cmd: vm.history) {
+            os << "- " << cmd << '\n';
+        }
+        return os;
+    }
+    
 private:
-    std::vector<Any> stack;
+    std::string name;
+    std::deque<Command> history{};
+    std::vector<Any> stack{};
 };
 
 constexpr bool StringsEqualInsensitive(const std::string_view& str1,
@@ -89,7 +162,7 @@ std::optional<Command> ParseLine(const std::string_view& line)
             return Command{ code, second };
         }
     }
-    throw ScriptError(std::format("No opcode with value: {}", first));
+    throw ParseError(std::format("No opcode with value: {}", first));
 }
 
 constexpr const char* script = R"(
@@ -117,8 +190,10 @@ void RunScript(const std::string_view& script)
     VirtualMachine vm{};
     
     for (const Command& cmd: cmds) {
-        vm.Execute(cmd);
+        vm = vm.Execute(cmd);
     }
+    
+    std::cout << vm << '\n';
 }
 
 void RunRepl()
@@ -141,10 +216,10 @@ void RunRepl()
         try {
             std::optional<Command> cmd = ParseLine(input);
             if (!cmd.has_value()) {
-                throw ScriptError("Empty line");
+                throw ParseError("Empty line");
             }
-            vm.Execute(*cmd);
-        } catch (ScriptError& ex) {
+            vm = vm.Execute(*cmd);
+        } catch (std::exception& ex) {
             std::cerr << ex.what() << '\n';
         }
     }
