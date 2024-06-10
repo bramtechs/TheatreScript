@@ -141,7 +141,7 @@ public:
     
 private:
     static std::string ToString(const std::string& s) {
-        return std::format("'{}'", s);
+        return s;
     }
 
     static std::string ToString(const std::monostate&) {
