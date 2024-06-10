@@ -60,6 +60,7 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
             }
         }
 
+        // TODO: find types
         // TODO: find literals
 
         // find identifiers
