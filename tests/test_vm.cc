@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
-
 #include "theatre_script.hh"
 
 using namespace theatre;
 
-TEST(ScriptTests, TestSum) {
+TEST(ScriptTests, Sum) {
 	Any result = RunScript(R"(
 		PUSH 5
 		PUSH 7
@@ -15,7 +14,7 @@ TEST(ScriptTests, TestSum) {
 	ASSERT_EQ(result.Extract<int>(), 12);
 }
 
-TEST(ScriptTests, TestSubtract) {
+TEST(ScriptTests, Subtract) {
 	Any result = RunScript(R"(
 		PUSH 7
 		PUSH 2
@@ -26,7 +25,7 @@ TEST(ScriptTests, TestSubtract) {
 	ASSERT_EQ(result.Extract<int>(), -5);
 }
 
-TEST(ScriptTests, TestMultiply) {
+TEST(ScriptTests, Multiply) {
 	Any result = RunScript(R"(
 		PUSH 10
 		PUSH 5
@@ -37,7 +36,7 @@ TEST(ScriptTests, TestMultiply) {
 	ASSERT_EQ(result.Extract<int>(), 50);
 }
 
-TEST(ScriptTests, TestDivide) {
+TEST(ScriptTests, Divide) {
 	Any result = RunScript(R"(
 		PUSH 5
 		PUSH 10
