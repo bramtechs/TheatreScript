@@ -3,6 +3,17 @@
 
 using namespace theatre;
 
+TEST(LexerTests, IsAlpha) {
+    ASSERT_TRUE(std::isalpha('a'));
+    ASSERT_TRUE(std::isalpha('z'));
+    ASSERT_TRUE(std::isalpha('A'));
+    ASSERT_TRUE(std::isalpha('Z'));
+    ASSERT_FALSE(std::isalpha('('));
+    ASSERT_FALSE(std::isalpha('&'));
+    ASSERT_FALSE(std::isalpha('0'));
+    ASSERT_FALSE(std::isalpha('9'));
+}
+
 TEST(LexerTests, LexFnDeclaration) {
     const auto tokens = LexText(R"(
     

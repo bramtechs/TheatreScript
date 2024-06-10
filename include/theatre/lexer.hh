@@ -3,9 +3,12 @@
 #include <vector>
 #include <array>
 #include <string>
+#include <stdexcept>
 
 namespace theatre
 {
+    using LexerError = std::runtime_error;
+
     enum class TokenType : int
     {
         FN,
@@ -49,7 +52,11 @@ namespace theatre
 
             (*this)[i] = '\0';
         }
-        
+
+        constexpr size_t Length() const {
+            return std::string_view(data()).size();
+        }
+
         constexpr operator std::string_view() const
         {
             return std::string_view(data());
