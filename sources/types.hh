@@ -63,20 +63,43 @@ public:
         return os;
     }
 
+    inline void ThrowIfEitherIsString(const Any& any) const {
+        // strings not allowed
+        if (std::holds_alternative<std::string>(*this) || std::holds_alternative<std::string>(any)) {
+            throw OperationError("Cannot subtract with strings");
+        }
+    }
+        
+#define OP_SHARED(O) \
+    /* If either is float, type gets promoted */ \
+    if (std::holds_alternative<float>(any) || std::holds_alternative<float>(*this)) { \
+        return Any ( this->Value<float>() O any.Value<float>() ); \
+    } else { \
+        return Any ( this->Value<int>() O any.Value<int>() ); \
+    } \
+    
     Any operator +(const Any& any) const {
         // string concatenation
         if (std::holds_alternative<std::string>(*this) && std::holds_alternative<std::string>(any)) {
             return Any ( std::get<std::string>(*this) + std::get<std::string>(any) );
-        } else if (std::holds_alternative<std::monostate>(*this) && std::holds_alternative<std::string>(any)) {
-            return Any ( std::get<std::string>(any) );
-        } else {
-            // If either is float, type gets promoted
-            if (std::holds_alternative<float>(any) || std::holds_alternative<float>(*this)) {
-                return Any ( this->Value<float>() + any.Value<float>() );
-            } else {
-                return Any ( this->Value<int>() + any.Value<int>() );
-            }
         }
+    
+        OP_SHARED(+)
+    }
+    
+    Any operator -(const Any& any) const {
+        ThrowIfEitherIsString(any);
+        OP_SHARED(-)
+    }
+    
+    Any operator *(const Any& any) const {
+        ThrowIfEitherIsString(any);
+        OP_SHARED(*)
+    }
+    
+    Any operator /(const Any& any) const {
+        ThrowIfEitherIsString(any);
+        OP_SHARED(/)
     }
 
     // TODO: @cleanup inline
@@ -86,8 +109,6 @@ public:
             return (T)std::get<float>(*this);
         } else if (std::holds_alternative<int>(*this)) {
             return (T)std::get<int>(*this);
-        } else if (std::holds_alternative<std::monostate>(*this)) {
-            return (T)0.f;
         } else {
             throw OperationError(std::format("Any {} does not contain valuable", ToString()));
         }

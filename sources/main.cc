@@ -27,6 +27,9 @@ using VmError = std::runtime_error;
 enum class Opcode : int
 {
     PUSH,
+    SUB,
+    MUL,
+    DIV,
     ADD,
     CALL,
 };
@@ -157,11 +160,43 @@ public:
                 break;
             }
             case Opcode::ADD: {
-                Any base;
+                Any base = 0;
                 while (!m.IsStackEmpty()) {
                     Any value;
                     m = m.PopStack(&value);
                     base = base + value;
+                }
+                m = m.PushStack(base);
+                break;
+            }
+            case Opcode::SUB: {
+                Any base = 0;
+                while (!m.IsStackEmpty()) {
+                    Any value;
+                    m = m.PopStack(&value);
+                    base = base - value;
+                }
+                m = m.PushStack(base);
+                break;
+            }
+            case Opcode::MUL: {
+                Any base = 1;
+                while (!m.IsStackEmpty()) {
+                    Any value;
+                    m = m.PopStack(&value);
+                    base = base * value;
+                }
+                m = m.PushStack(base);
+                break;
+            }
+            case Opcode::DIV: {
+                Any base;
+                while (!m.IsStackEmpty()) {
+                    Any value;
+                    m = m.PopStack(&value);
+                    if (!base.IsUndefined()) {
+                        base = base / value;
+                    }
                 }
                 m = m.PushStack(base);
                 break;
@@ -295,7 +330,7 @@ std::optional<Command> ParseLine(const std::string_view& line)
 constexpr const char* script = R"(
     PUSH 5
     PUSH 7
-    ADD
+    MUL
     CALL println
 )";
 
