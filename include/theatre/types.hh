@@ -5,8 +5,12 @@
 #include <string>
 #include <variant>
 #include <stdexcept>
+#include <format>
+
+namespace theatre {
 
 using OperationError = std::runtime_error;
+using NotImplementedError = std::exception;
 
 using AnyVariant = std::variant<std::monostate, int, float, bool, std::string>;
 class Any : public AnyVariant
@@ -48,10 +52,31 @@ public:
         return std::get<T>(*this);
     }
     
-    bool IsUndefined() const {
+    bool IsMono() const {
         return std::holds_alternative<std::monostate>(*this);
     }
+
+    template<typename T>
+    bool IsType() const {
+        return std::holds_alternative<T>(*this);
+    }
     
+    const char* GetTypeName() const {
+        if (std::holds_alternative<int>(*this)) {
+            return "int";
+        }
+        if (std::holds_alternative<float>(*this)) {
+            return "float";
+        }
+        if (std::holds_alternative<std::string>(*this)) {
+            return "string";
+        }
+        if (std::holds_alternative<std::monostate>(*this)) {
+            return "mono";
+        }
+        throw NotImplementedError();
+    }
+
     std::string ToString() const {
         std::string result;
         std::visit([&](const auto& value) { result = ToString(value); }, *this);
@@ -120,7 +145,7 @@ private:
     }
 
     static std::string ToString(const std::monostate&) {
-        return "(undefined)";
+        return "(mono)";
     }
     
     static std::string ToString(int value) {
@@ -134,4 +159,6 @@ private:
     static std::string ToString(bool value) {
         return value ? "true" : "false";
     }
+};
+
 };

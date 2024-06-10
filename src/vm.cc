@@ -15,9 +15,10 @@
 #include <algorithm>
 #include <iterator>
 
-#include "raylib.h"
-#include "types.hh"
+#include "theatre/types.hh"
 #include "magic_enum.hpp"
+
+namespace theatre {
 
 // Virtual machine and its types' methods should be pure.
 
@@ -46,111 +47,43 @@ public:
     }
 };
 
-using HookParams = std::span<Any>;
-using HookFunc = std::function<Any(const HookParams&)>;
+class VirtualMachine;
+struct HookContext {
+    std::ostream& out;
+    const std::span<Any>& args;
+    VirtualMachine& vm;
+
+    HookContext(VirtualMachine& vm, const std::span<Any>& args, std::ostream& out)
+        : vm(vm), args(args), out(out)
+        {
+        }
+};
+
+using HookFunc = std::function<Any(HookContext&&)>;
 struct Hook {
     int argc; // -1 for infinite
     HookFunc func;
     std::string name;
     
-    Any Call(const HookParams& params) const {
-        if (argc != -1 && params.size() != argc) {
-            throw VmError(std::format("Function {} expects {} args but {} were given.",
-                                      name, argc, params.size()));
-        }
-        return func(params);
-    }
+    Any Call(VirtualMachine* vm, const std::span<Any>& args) const;
 };
 
-class Externals
+
+class VirtualMachine
 {
 public:
-    std::unordered_map<std::string, Hook> hooks;
+    VirtualMachine(const std::string& name = "", std::ostream& outStream = std::cout)
+        : name(name), outStream(&outStream)
+    {
+    }
     
-    Externals() {
+    void Init() {
         // add standard library
         Register("print", Print, -1);
         Register("println", PrintLn, -1);
         Register("throw", Throw, -1);
     }
-    
-    void Register(const std::string& name, HookFunc func, int paramCount = -1) {
-        hooks[name] = Hook{ paramCount, func };
-    }
-    
-    Hook GetHook(const std::string& name) const {
-        try {
-            return hooks.at(name);
-        } catch (std::range_error& ex) {
-            throw("No external hook found with name: {}", name);
-        }
-    }
-    
-private:
-    static Any Throw(const HookParams& args) {
-        try {
-            Any base;
-            for (const Any& a: args) {
-                base = base + a;
-            }
-            throw VmError(base.ToString());
-        } catch (OperationError& ex) {
-            std::stringstream ss;
-            ss << "Error: ";
-            for (const Any& a: args) {
-                ss << a << " ";
-            }
-            throw VmError(ss.str());
-        }
-    }
-    
-    static void _BasePrint(const HookParams& args) {
-        if (args.size() == 1) {
-            std::cout << args[0];
-        } else {
-            std::string formatted = FormatWithVector(args[0].ToString(),
-                                                     std::span(args.begin() + 1, args.end()));
-            std::cout << formatted;
-        }
-    }
-    
-    static Any Print(const HookParams& args) {
-        _BasePrint(args);
-        return {};
-    }
-    
-    static Any PrintLn(const HookParams& args) {
-        _BasePrint(args);
-        std::cout << "\n";
-        return {};
-    }
-    
-    static std::string FormatWithVector(const std::string& format,
-                                        const std::span<Any>& args) {
-        std::stringstream ss;
-        size_t argIndex = 0;
 
-        for (char ch : format) {
-            if (ch == '{' && argIndex < args.size()) {
-                const Any& arg = args[argIndex++];
-                ss << arg;
-            } else if (ch != '}') {
-                ss << ch;
-            }
-        }
-        return ss.str();
-    }
-};
-
-// TODO: make all methods static
-class VirtualMachine
-{
-public:
-    VirtualMachine(const std::string& name = "")
-        : name(name)
-    {
-    }
-    
     [[nodiscard]] VirtualMachine Execute(const Command& cmd) const {
         VirtualMachine m = *this;
         
@@ -170,11 +103,15 @@ public:
                 break;
             }
             case Opcode::SUB: {
-                Any base = 0;
+                Any base;
                 while (!m.IsStackEmpty()) {
                     Any value;
                     m = m.PopStack(&value);
-                    base = base - value;
+                    if (base.IsMono()) {
+                        base = value;
+                    } else {
+                        base = base - value;
+                    }
                 }
                 m = m.PushStack(base);
                 break;
@@ -194,7 +131,9 @@ public:
                 while (!m.IsStackEmpty()) {
                     Any value;
                     m = m.PopStack(&value);
-                    if (!base.IsUndefined()) {
+                    if (base.IsMono()) {
+                        base = value;
+                    } else {
                         base = base / value;
                     }
                 }
@@ -203,7 +142,7 @@ public:
             }
             case Opcode::CALL: {
                 const std::string& func = cmd.value.Extract<std::string>();
-                Hook hook = externals.GetHook(func);
+                Hook hook = GetHook(func);
                 // eat rest stack
                 std::vector<Any> args; args.reserve(8);
                 while (!m.IsStackEmpty()) {
@@ -211,8 +150,8 @@ public:
                     m = m.PopStack(&arg);
                     args.emplace_back(arg);
                 }
-                Any result = hook.Call(args);
-                if (!result.IsUndefined()) {
+                Any result = hook.Call(&m, args);
+                if (!result.IsMono()) {
                     m = m.PushStack(result);
                 }
                 break;
@@ -272,12 +211,91 @@ public:
         return os;
     }
     
+    void Register(const std::string& name, HookFunc func, int paramCount = -1) {
+        hooks[name] = Hook{ paramCount, func };
+    }
+    
+    Hook GetHook(const std::string& name) const {
+        try {
+            return hooks.at(name);
+        } catch (std::range_error& ex) {
+            throw(std::format("No external hook found with name: {}", name));
+        }
+    }
+
+    inline std::ostream& GetOutStream() {
+        return *outStream;
+    }
+
 private:
     std::string name;
     std::deque<Command> history{};
     std::vector<Any> stack{};
-    Externals externals{};
+    std::unordered_map<std::string, Hook> hooks;
+    std::ostream* outStream;
+
+    static Any Throw(HookContext&& ctx) {
+        try {
+            Any base;
+            for (const Any& a: ctx.args) {
+                base = base + a;
+            }
+            throw VmError(base.ToString());
+        } catch (OperationError& ex) {
+            std::stringstream ss;
+            ss << "Error: ";
+            for (const Any& a: ctx.args) {
+                ss << a << " ";
+            }
+            throw VmError(ss.str());
+        }
+    }
+    
+    static void _BasePrint(HookContext& ctx) {
+        if (ctx.args.size() == 1) {
+            ctx.out << ctx.args[0];
+        } else {
+            std::string formatted = FormatWithVector(ctx.args[0].ToString(),
+                                                     std::span(ctx.args.begin() + 1, ctx.args.end()));
+            ctx.out << formatted;
+        }
+    }
+    
+    static Any Print(HookContext&& ctx) {
+        _BasePrint(ctx);
+        return {};
+    }
+    
+    static Any PrintLn(HookContext&& ctx) {
+        _BasePrint(ctx);
+        ctx.out << "\n";
+        return {};
+    }
+    
+    static std::string FormatWithVector(const std::string& format,
+                                        const std::span<Any>& args) {
+        std::stringstream ss;
+        size_t argIndex = 0;
+
+        for (char ch : format) {
+            if (ch == '{' && argIndex < args.size()) {
+                const Any& arg = args[argIndex++];
+                ss << arg;
+            } else if (ch != '}') {
+                ss << ch;
+            }
+        }
+        return ss.str();
+    }
 };
+
+    Any Hook::Call(VirtualMachine* vm, const std::span<Any>& args) const {
+        if (argc != -1 && args.size() != argc) {
+            throw VmError(std::format("Function {} expects {} args but {} were given.",
+                                      name, argc, args.size()));
+        }\
+        return func(HookContext(*vm, args, vm->GetOutStream()));
+    }
 
 constexpr bool StringsEqualInsensitive(const std::string_view& str1,
                                        const std::string_view& str2)
@@ -327,14 +345,7 @@ std::optional<Command> ParseLine(const std::string_view& line)
     throw ParseError(std::format("No opcode with value: {}", first));
 }
 
-constexpr const char* script = R"(
-    PUSH 5
-    PUSH 7
-    MUL
-    CALL println
-)";
-
-void RunScript(const std::string_view& script)
+Any RunScript(const std::string_view& script, std::ostream& target)
 {
     std::istringstream iss(script.data());
 
@@ -349,13 +360,20 @@ void RunScript(const std::string_view& script)
         }
     }
     
-    VirtualMachine vm{};
+    VirtualMachine vm("default", target);
+    vm.Init();
     
     for (const Command& cmd: cmds) {
         vm = vm.Execute(cmd);
     }
-    
-    std::cout << vm << '\n';
+        
+    // first item of stack is the result
+    // TODO: if multiple items left on stack return it as array
+    Any result {};
+    if (!vm.IsStackEmpty()) {
+        vm = vm.PopStack(&result);   
+    }
+    return result;
 }
 
 void RunRepl()
@@ -387,37 +405,4 @@ void RunRepl()
     }
 }
 
-
-void StartGame();
-
-int main(int argc, char** argv)
-{
-    // StartGame();
-    // RunRepl();
-    RunScript(script);
-    return 0;
-}
-
-void StartGame()
-{
-    const int screenWidth = 800;
-    const int screenHeight = 450;
-
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - basic window");
-
-    SetTargetFPS(60);
-
-    while (!WindowShouldClose())
-    {
-        BeginDrawing();
-        {
-            ClearBackground(RAYWHITE);
-            
-            DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
-        }
-        EndDrawing();
-    }
-
- 
-    CloseWindow();
-}
+};
