@@ -122,10 +122,13 @@ namespace theatre
     };
     #undef STATIC_TOKEN
 
-    namespace tokens
-    {
-
+    constexpr const std::array TypeNames = {
+        "mono",
+        "int",
+        "float",
+        "bool",
+        "string"
     };
-
+    
     std::vector<Token> LexText(const std::string_view &text);
 };

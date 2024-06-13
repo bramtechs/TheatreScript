@@ -5,7 +5,6 @@
 
 namespace theatre {
 
-
 const char* script = R"(
 
 fn takeSum(int a, int b) int {
@@ -43,11 +42,11 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
 
         std::optional<Token> found = std::nullopt;
 
-        // find static tokens
         {
             std::string_view subView(view);
 
             while (!subView.empty()) {
+                // find static tokens
                 for (Token tok : StaticTokens) {
                     if (subView == tok.value) {
                         tokens.emplace_back(tok);
@@ -56,11 +55,22 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
                         break;
                     }
                 }
+
+                // find types
                 subView = std::string_view(subView.data(), subView.size() - 1);
+                for (const std::string& type : TypeNames)
+                {
+                    if (subView == type) {
+                        Token tok(TokenType::TYPE, type);
+                        tokens.emplace_back(tok);
+                        std::cout << "Found type: " << tok.value.data() << '\n';
+                        found.emplace(tok);
+                        break;
+                    }
+                }
             }
         }
 
-        // TODO: find types
         // TODO: find literals
 
         // find identifiers
