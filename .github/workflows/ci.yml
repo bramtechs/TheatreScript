@@ -27,10 +27,9 @@ jobs:
           cd build
           cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
 
-      - name: Build with Make
+      - name: Build
         run: |
-          cd build
-          make
+          cmake --build build --config Release --parallel
 
       - name: Run Test
         run: /home/runner/work/github_actions_gtest_example/github_actions_gtest_example/build/test/github_actions_gtest_example.test
