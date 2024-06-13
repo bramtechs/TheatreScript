@@ -14,17 +14,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Clang
-        uses: egor-tensin/setup-clang@v1.4
-        with:
-          version: 15
-          platform: x64
+      - name: Install Clang and libc++
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libc++-14-dev libc++abi-14-dev
 
       - name: Configure with CMake
         run: |
           mkdir build
           cd build
-          cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
+          cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS="-stdlib=libc++ -L/usr/lib/x86_64-linux-gnu" -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++" -DCMAKE_BUILD_TYPE=Release ..
 
       - name: Build
         run: |
