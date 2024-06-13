@@ -10,7 +10,10 @@ static void AssertArrays(const T& actual, const T& expected)
     ASSERT_EQ(actual.size(), expected.size());
 
     for (auto i = 0; i < actual.size(); i++) {
-        ASSERT_TRUE(actual[i] == expected[i]);
+        if (actual[i] != expected[i]) {
+            std::cerr << "Could not match " << expected[i] << " with " << actual[i] << '\n';
+            FAIL();
+        }
     }
 }
 
@@ -31,18 +34,18 @@ TEST(LexerTests, LexSymbols) {
     )");
 
     const std::vector<Token> expected = {
-        Token(TokenType::BRACE_OPEN),
-        Token(TokenType::BRACE_CLOSE),
-        Token(TokenType::PAREN_OPEN),
-        Token(TokenType::PAREN_CLOSE),
-        Token(TokenType::LESS_THAN),
-        Token(TokenType::GREATER_THAN),
-        Token(TokenType::COMMA),
-        Token(TokenType::EQUALS),
-        Token(TokenType::PLUS),
-        Token(TokenType::MINUS),
-        Token(TokenType::DIVIDE),
-        Token(TokenType::SEMICOLON),
+        Token::Of<TokenType::BRACE_OPEN>(),
+        Token::Of<TokenType::BRACE_CLOSE>(),
+        Token::Of<TokenType::PAREN_OPEN>(),
+        Token::Of<TokenType::PAREN_CLOSE>(),
+        Token::Of<TokenType::LESS_THAN>(),
+        Token::Of<TokenType::GREATER_THAN>(),
+        Token::Of<TokenType::COMMA>(),
+        Token::Of<TokenType::EQUALS>(),
+        Token::Of<TokenType::PLUS>(),
+        Token::Of<TokenType::MINUS>(),
+        Token::Of<TokenType::DIVIDE>(),
+        Token::Of<TokenType::SEMICOLON>(),
     };
 
     AssertArrays(tokens, expected);
@@ -58,23 +61,23 @@ TEST(LexerTests, LexFnDeclaration) {
     )");
 
     const std::vector<Token> expected = {
-        Token(TokenType::FN),
-        Token(TokenType::IDENT),
-        Token(TokenType::PAREN_OPEN),
-        Token(TokenType::TYPE),
-        Token(TokenType::LITERAL),
-        Token(TokenType::COMMA),
-        Token(TokenType::TYPE),
-        Token(TokenType::LITERAL),
-        Token(TokenType::PAREN_CLOSE),
-        Token(TokenType::TYPE),
-        Token(TokenType::BRACE_OPEN),
-        Token(TokenType::RETURN),
-        Token(TokenType::LITERAL),
-        Token(TokenType::PLUS),
-        Token(TokenType::LITERAL),
-        Token(TokenType::SEMICOLON),
-        Token(TokenType::BRACE_CLOSE),
+        Token::Of<TokenType::FN>(),
+        Token::Of<TokenType::IDENT>("takeSum"),
+        Token::Of<TokenType::PAREN_OPEN>(),
+        Token::Of<TokenType::TYPE>("int"),
+        Token::Of<TokenType::LITERAL>("a"),
+        Token::Of<TokenType::COMMA>(),
+        Token::Of<TokenType::TYPE>("int"),
+        Token::Of<TokenType::LITERAL>("b"),
+        Token::Of<TokenType::PAREN_CLOSE>(),
+        Token::Of<TokenType::TYPE>("int"),
+        Token::Of<TokenType::BRACE_OPEN>(),
+        Token::Of<TokenType::RETURN>(),
+        Token::Of<TokenType::LITERAL>("a"),
+        Token::Of<TokenType::PLUS>(),
+        Token::Of<TokenType::LITERAL>("b"),
+        Token::Of<TokenType::SEMICOLON>(),
+        Token::Of<TokenType::BRACE_CLOSE>(),
     };
 
     AssertArrays(tokens, expected);

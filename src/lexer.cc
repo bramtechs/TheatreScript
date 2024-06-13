@@ -50,7 +50,7 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
                 for (Token tok : StaticTokens) {
                     if (subView == tok.value) {
                         tokens.emplace_back(tok);
-                        std::cout << "Found token: " << tok.value.data() << '\n';
+                        std::cout << "Found token: " << tok << '\n';
                         found.emplace(tok);
                         break;
                     }
@@ -62,7 +62,7 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
                     if (subView == type) {
                         Token tok(TokenType::TYPE, type);
                         tokens.emplace_back(tok);
-                        std::cout << "Found type: " << tok.value.data() << '\n';
+                        std::cout << "Found type: " << tok << '\n';
                         found.emplace(tok);
                         break;
                     }

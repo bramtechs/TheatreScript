@@ -3,13 +3,15 @@
 #include <vector>
 #include <array>
 #include <string>
+#include <sstream>
 #include <stdexcept>
+#include <magic_enum.hpp>
 
 namespace theatre
 {
     using LexerError = std::runtime_error;
 
-    enum class TokenType : int
+    enum class TokenType
     {
         FN,
         IDENT,
@@ -36,6 +38,10 @@ namespace theatre
     constexpr size_t MAX_TOKEN_LEN = 64;
     struct StackString : public std::array<char, MAX_TOKEN_LEN>
     {
+        constexpr StackString() {
+            (*this)[0] = '\0';
+        }
+
         constexpr StackString(const std::string_view &text)
         {
             for (size_t i = 0; i < MAX_TOKEN_LEN; ++i)
@@ -61,7 +67,18 @@ namespace theatre
         {
             return std::string_view(data());
         }
+
+        friend std::ostream& operator<<(std::ostream& os, const StackString& str) {
+            os << std::string_view(str);
+            return os;
+        }
     };
+
+    template <TokenType type>
+    constexpr bool HasDefaultTokenValue();
+
+    template <TokenType type>
+    constexpr StackString GetDefaultTokenValue();
 
     struct Token
     {
@@ -70,7 +87,7 @@ namespace theatre
         int col{-1};
         int row{-1};
 
-        constexpr Token(TokenType type, const std::string_view &value = "")
+        constexpr Token(TokenType type, const std::string_view &value)
             : type(type), value(value)
         {
         }
@@ -92,10 +109,33 @@ namespace theatre
             return this->type == type;
         }
 
+        std::string ToString() const {
+            std::stringstream s;
+            s << *this;
+            return s.str();
+        }
+
         // NOTE: does not account for col and row, as it's not really important
         constexpr bool operator==(const Token &o) const
         {
             return IsType(o.type) && value == o.value;
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const Token& token) {
+            os << "Token( " << magic_enum::enum_name(token.type) << " value='" << token.value << "' )";
+            return os;
+        }
+
+        template <TokenType type>
+        static constexpr Token Of()
+        {
+            return Token(type, GetDefaultTokenValue<type>());
+        }
+
+        template <TokenType type>
+        static constexpr Token Of(const std::string_view& value)
+        {
+            return Token(type, value);
         }
     };
 
@@ -121,6 +161,27 @@ namespace theatre
         STATIC_TOKEN(MUT, "mut"),
     };
     #undef STATIC_TOKEN
+
+    template <TokenType type>
+    constexpr bool HasDefaultTokenValue() {
+        for (const Token& token : StaticTokens) {
+            if (token.type == type) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    template <TokenType type>
+    constexpr StackString GetDefaultTokenValue() {
+        static_assert(HasDefaultTokenValue<type>(), "Token type has no default value");
+        for (const Token& token : StaticTokens) {
+            if (token.type == type) {
+                return token.value;
+            }
+        }
+        throw std::logic_error("Token type has no default value");
+    }
 
     constexpr const std::array TypeNames = {
         "mono",
