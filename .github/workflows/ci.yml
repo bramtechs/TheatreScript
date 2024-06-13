@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        compiler: [gcc, clang, msvc]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up environment
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ clang
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew update
+          brew install cmake gcc clang
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+          choco install visualstudio2019buildtools -y
+        fi
+
+    - name: Create build directory
+      run: mkdir build
+
+    - name: Configure CMake
+      run: |
+        cd build
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          cmake -G "Visual Studio 16 2019" -A x64 ..
+        else
+          cmake -G "Unix Makefiles" ..
+        fi
+
+    - name: Build
+      run: |
+        cd build
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          cmake --build . --config Release
+        else
+          make -j$(nproc)
+        fi
+
+    - name: Run tests
+      run: |
+        cd build
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          ctest -C Release
+        else
+          ctest --output-on-failure
+        fi
