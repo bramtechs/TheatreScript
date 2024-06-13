@@ -15,11 +15,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Clang
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-15 libc++-15-dev libc++abi-15-dev
-          export CC=clang
-          export CXX=clang++
+        uses: egor-tensin/setup-clang@v1.4
+        with:
+          version: 15
+          platform: x64
 
       - name: Configure with CMake
         run: |
