@@ -103,8 +103,8 @@ namespace theatre
     #define STATIC_TOKEN(X, Y) Token(TokenType::X, Y)
     constexpr std::array<Token, 17> StaticTokens = {
         STATIC_TOKEN(FN, "fn"),
-        STATIC_TOKEN(PAREN_OPEN, "{"),
-        STATIC_TOKEN(PAREN_OPEN, "}"),
+        STATIC_TOKEN(PAREN_OPEN, "("),
+        STATIC_TOKEN(PAREN_CLOSE, ")"),
         STATIC_TOKEN(COMMA, ","),
         STATIC_TOKEN(BRACE_OPEN, "{"),
         STATIC_TOKEN(BRACE_CLOSE, "}"),
@@ -129,6 +129,6 @@ namespace theatre
         "bool",
         "string"
     };
-    
+
     std::vector<Token> LexText(const std::string_view &text);
 };

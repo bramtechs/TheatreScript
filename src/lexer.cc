@@ -57,7 +57,6 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
                 }
 
                 // find types
-                subView = std::string_view(subView.data(), subView.size() - 1);
                 for (const std::string& type : TypeNames)
                 {
                     if (subView == type) {
@@ -68,18 +67,20 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
                         break;
                     }
                 }
+
+                subView = std::string_view(subView.data(), subView.size() - 1);
             }
         }
 
         // TODO: find literals
 
         // find identifiers
-        if (!found)
+        if (!found.has_value())
         {
             // find next non alpha character
             for (auto j = 0; j < length; j++) {
                 if (!std::isalpha(view[j])) {
-                    Token identToken(TokenType::IDENT, view.substr(0, j));
+                    Token identToken(TokenType::IDENT, view.substr(0, j)); // TODO fix: idents can have empty value
                     std::cout << "Found identifier token: '" << identToken.value.data() << "'\n";
                     tokens.emplace_back(identToken);
                     found.emplace(identToken);
@@ -92,8 +93,8 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
             throw LexerError("Didn't find anything?!");
         }
 
-        auto skip = found->value.Length();
-        i += skip;
+        int skip = static_cast<int>(found->value.Length());
+        i += std::max(0, skip - 1);
     }
 
    return tokens;

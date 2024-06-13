@@ -10,7 +10,7 @@ static void AssertArrays(const T& actual, const T& expected)
     ASSERT_EQ(actual.size(), expected.size());
 
     for (auto i = 0; i < actual.size(); i++) {
-        ASSERT_EQ(actual[i], expected[i]);
+        ASSERT_TRUE(actual[i] == expected[i]);
     }
 }
 
