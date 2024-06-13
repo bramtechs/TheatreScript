@@ -93,51 +93,35 @@ public:
                 break;
             }
             case Opcode::ADD: {
-                Any base = 0;
-                while (!m.IsStackEmpty()) {
-                    Any value;
-                    m = m.PopStack(&value);
-                    base = base + value;
-                }
-                m = m.PushStack(base);
+                EnsureStackLength(2);
+                Any a, b;
+                m = m.PopStack(&a);
+                m = m.PopStack(&b);
+                m = m.PushStack(a + b);
                 break;
             }
             case Opcode::SUB: {
-                Any base;
-                while (!m.IsStackEmpty()) {
-                    Any value;
-                    m = m.PopStack(&value);
-                    if (base.IsMono()) {
-                        base = value;
-                    } else {
-                        base = base - value;
-                    }
-                }
-                m = m.PushStack(base);
+                EnsureStackLength(2);
+                Any a, b;
+                m = m.PopStack(&a);
+                m = m.PopStack(&b);
+                m = m.PushStack(a - b);
                 break;
             }
             case Opcode::MUL: {
-                Any base = 1;
-                while (!m.IsStackEmpty()) {
-                    Any value;
-                    m = m.PopStack(&value);
-                    base = base * value;
-                }
-                m = m.PushStack(base);
+                EnsureStackLength(2);
+                Any a, b;
+                m = m.PopStack(&a);
+                m = m.PopStack(&b);
+                m = m.PushStack(a * b);
                 break;
             }
             case Opcode::DIV: {
-                Any base;
-                while (!m.IsStackEmpty()) {
-                    Any value;
-                    m = m.PopStack(&value);
-                    if (base.IsMono()) {
-                        base = value;
-                    } else {
-                        base = base / value;
-                    }
-                }
-                m = m.PushStack(base);
+                EnsureStackLength(2);
+                Any a, b;
+                m = m.PopStack(&a);
+                m = m.PopStack(&b);
+                m = m.PushStack(a / b);
                 break;
             }
             case Opcode::CALL: {
@@ -170,6 +154,14 @@ public:
         return stack.empty();
     }
     
+    void EnsureStackLength(int argc) const
+    {
+        if (stack.size() < argc) {
+            throw VmError(std::format("Stack underflow. Expected {} items but got {}.",
+                                      argc, stack.size()));
+        }
+    }
+
     [[nodiscard]] VirtualMachine PopStack(Any* outValue) const {
         if (IsStackEmpty()) {
             throw VmError("Stack underflow");
