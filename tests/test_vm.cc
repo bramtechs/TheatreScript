@@ -6,7 +6,7 @@
 
 using namespace theatre;
 
-TEST(ScriptTests, Sum) {
+TEST(VmTests, Sum) {
 	Any result = RunScript(R"(
 		PUSH 5
 		PUSH 7
@@ -17,7 +17,7 @@ TEST(ScriptTests, Sum) {
 	ASSERT_EQ(result.Extract<int>(), 12);
 }
 
-TEST(ScriptTests, Subtract) {
+TEST(VmTests, Subtract) {
 	Any result = RunScript(R"(
 		PUSH 7
 		PUSH 2
@@ -28,7 +28,7 @@ TEST(ScriptTests, Subtract) {
 	ASSERT_EQ(result.Extract<int>(), -5);
 }
 
-TEST(ScriptTests, Multiply) {
+TEST(VmTests, Multiply) {
 	Any result = RunScript(R"(
 		PUSH 10
 		PUSH 5
@@ -39,7 +39,7 @@ TEST(ScriptTests, Multiply) {
 	ASSERT_EQ(result.Extract<int>(), 50);
 }
 
-TEST(ScriptTests, Divide) {
+TEST(VmTests, Divide) {
 	Any result = RunScript(R"(
 		PUSH 5
 		PUSH 10
@@ -50,7 +50,7 @@ TEST(ScriptTests, Divide) {
 	ASSERT_EQ(result.Extract<int>(), 2);
 }
 
-TEST(ScriptTests, StandardOutput) {
+TEST(VmTests, StandardOutput) {
 	
 	std::stringstream dummyCout{};
 

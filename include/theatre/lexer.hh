@@ -183,6 +183,7 @@ namespace theatre
         throw std::logic_error("Token type has no default value");
     }
 
+    // TODO: use AnyType
     constexpr const std::array TypeNames = {
         "mono",
         "int",

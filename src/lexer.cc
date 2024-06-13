@@ -1,7 +1,9 @@
-#include "theatre/lexer.hh"
 #include <unordered_map>
 #include <optional>
 #include <iostream>
+
+#include "theatre/lexer.hh"
+#include "theatre/utils.hh"
 
 namespace theatre {
 
@@ -50,7 +52,7 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
                 for (Token tok : StaticTokens) {
                     if (subView == tok.value) {
                         tokens.emplace_back(tok);
-                        std::cout << "Found token: " << tok << '\n';
+                        cdebug << "Found token: " << tok << '\n';
                         found.emplace(tok);
                         break;
                     }
@@ -62,7 +64,7 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
                     if (subView == type) {
                         Token tok(TokenType::TYPE, type);
                         tokens.emplace_back(tok);
-                        std::cout << "Found type: " << tok << '\n';
+                        cdebug << "Found type: " << tok << '\n';
                         found.emplace(tok);
                         break;
                     }
@@ -81,7 +83,7 @@ static std::vector<Token> Lex(std::vector<Token>& tokens, const std::string_view
             for (auto j = 0; j < length; j++) {
                 if (!std::isalpha(view[j])) {
                     Token identToken(TokenType::IDENT, view.substr(0, j)); // TODO fix: idents can have empty value
-                    std::cout << "Found identifier token: '" << identToken.value.data() << "'\n";
+                    cdebug << "Found identifier token: '" << identToken.value.data() << "'\n";
                     tokens.emplace_back(identToken);
                     found.emplace(identToken);
                     break;

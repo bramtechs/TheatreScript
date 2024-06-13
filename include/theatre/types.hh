@@ -12,6 +12,15 @@ namespace theatre {
 using OperationError = std::runtime_error;
 using NotImplementedError = std::exception;
 
+enum class AnyType : int
+{
+    MONO,
+    INT,
+    FLOAT,
+    BOOL,
+    STRING
+};
+
 using AnyVariant = std::variant<std::monostate, int, float, bool, std::string>;
 class Any : public AnyVariant
 {

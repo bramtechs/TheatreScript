@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string_view>
 #include <iostream>
 
@@ -5,8 +7,9 @@
 
 namespace theatre {
 
-class Any;
+constexpr bool VERBOSE_LOGGING = false;
 
+class Any;
 Any RunScript(const std::string_view& script, std::ostream& target = std::cout);
 
 };
