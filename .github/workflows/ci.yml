@@ -17,7 +17,7 @@ jobs:
       - name: Set up Clang
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-15
+          sudo apt-get install -y clang-15 libc++-15-dev libc++abi-15-dev
           export CC=clang
           export CXX=clang++
 
